@@ -1,0 +1,895 @@
+---
+title: "FOPS"
+author: "Tommaso Strada"
+date: "2022-11"
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    toc: yes
+    number_sections: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+The goal of this project is to briefly describe the dataset and do a linear regression model to predict the number of rented bikes in a given time frame.
+
+[Link al dataset]()
+We use a daily aggregated dataset, which includes 731 records over 2011 and 2012. 
+
+There are 16 variables:
+
+  \- instant: record index
+	\- dteday : date
+	\- season : season (1:springer, 2:summer, 3:fall, 4:winter)
+	\- yr : year (0: 2011, 1:2012)
+	\- mnth : month ( 1 to 12)
+	\- hr : hour (0 to 23)
+	\- holiday : weather day is holiday or not (extracted from http://dchr.dc.gov/page/holiday-schedule)
+	\- weekday : day of the week
+	\- workingday : if day is neither weekend nor holiday is 1, otherwise is 0.
+	\+ weathersit : 
+	\	- 1: Clear, Few clouds, Partly cloudy, Partly cloudy
+	\	- 2: Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist
+	\	- 3: Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds
+	\	- 4: Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog
+	\- temp : Normalized temperature in Celsius. The values are divided to 41 (max)
+	\- atemp: Normalized feeling temperature in Celsius. The values are divided to 50 (max)
+	\- hum: Normalized humidity. The values are divided to 100 (max)
+	\- windspeed: Normalized wind speed. The values are divided to 67 (max)
+	\- casual: count of casual users
+	\- registered: count of registered users
+	\- cnt: count of total rental bikes including both casual and registered
+	
+
+
+'cnt' is the target variable.
+
+**Requirements**
+
+For this R project different packages are required.
+
+-   install.packages("ggplot2")
+-   install.packages("ggpubr")
+-   install.packages("GGally")
+-   install.packages("ggpairs")
+-   install.packages("wesanderson")
+-   install.packages("ggcorrplot")
+-   install.packages("moments")
+-   install.packages("olsrr")
+
+
+Import libraries
+```{r}
+library(ggplot2) 
+library(ggpubr)
+library(GGally) 
+library(RColorBrewer) 
+library(wesanderson)
+library(car)
+library(stringr)
+library(moments)
+library(olsrr)
+library(corrplot)
+library(dplyr)
+library(purrr)
+```
+
+
+# Data Exploration
+
+Set our working directory:
+ 
+```{r}
+setwd("C:/Users/Tommi/OneDrive/Desktop/Data Science/I ANNO/Primo semestre/F.Probability and Statistic/")
+getwd()
+```
+
+Upload the dataset:
+
+```{r}
+dt <- read.table('day.csv', sep = ',', header = TRUE)
+```
+
+### Check if there are all data and variables expressed in the documentation.
+
+```{r}
+View(dt)
+
+##  Dataset Shape
+dim(dt)
+```
+The dataset contains 731 rows and 16 columns.
+
+
+### Check variables types.
+
+```{r}
+str(dt)
+```
+There are 3 kind of variables: the most frequent variable is integer type. It's a numeric sub-category which implies integer numbers only. 'dteday' is a character type that's equal to a string. The other variables are numeric type.
+We noticed that some variables are not passed correctly. Indeed some of them, such as 'season', must be passed as dummy variables inside of integer.
+
+# Preprocessing
+In this phase we transform some variables from integers to string characters to be more interpretable. Then we tranform them to dummy variables. 
+
+**season**
+```{r}
+dt$season <- str_replace_all(dt$season, "1", "springer")
+dt$season <- str_replace_all(dt$season, "2", "summer")
+dt$season <- str_replace_all(dt$season, "3", "fall")
+dt$season <- str_replace_all(dt$season, "4", "winter")
+
+dt$season <- as.factor(dt$season)
+
+```
+
+
+**weathersit**
+```{r}
+dt$weathersit <- str_replace_all(dt$weathersit, "1", "Good")
+dt$weathersit <- str_replace_all(dt$weathersit, "2", "Fair")
+dt$weathersit <- str_replace_all(dt$weathersit, "3", "Bad")
+dt$weathersit <- str_replace_all(dt$weathersit, "4", "Very_bad")
+
+dt$weathersit <- as.factor(dt$weathersit)
+
+```
+
+**workingday**
+```{r}
+dt$workingday <- str_replace_all(dt$workingday, "1", "Workday")
+dt$workingday <- str_replace_all(dt$workingday, "0", "Holiday")
+
+dt$workingday <- as.factor(dt$workingday)
+
+```
+
+**mnth**
+```{r}
+dt$mnth <- str_replace_all(dt$mnth, "10", "Oct")
+dt$mnth <- str_replace_all(dt$mnth, "11", "Nov")
+dt$mnth <- str_replace_all(dt$mnth, "12", "Dec")
+dt$mnth <- str_replace_all(dt$mnth, "1", "Gen")
+dt$mnth <- str_replace_all(dt$mnth, "2", "Feb")
+dt$mnth <- str_replace_all(dt$mnth, "3", "Mar")
+dt$mnth <- str_replace_all(dt$mnth, "4", "Apr")
+dt$mnth <- str_replace_all(dt$mnth, "5", "May")
+dt$mnth <- str_replace_all(dt$mnth, "6", "Jun")
+dt$mnth <- str_replace_all(dt$mnth, "7", "Jul")
+dt$mnth <- str_replace_all(dt$mnth, "8", "Aug")
+dt$mnth <- str_replace_all(dt$mnth, "9", "Sep")
+
+dt$mnth <- factor(dt$mnth , levels=c("Gen", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+
+```
+
+**weekday**
+```{r}
+dt$weekday <- str_replace_all(dt$weekday, "0", "Mon")
+dt$weekday <- str_replace_all(dt$weekday, "1", "Tue")
+dt$weekday <- str_replace_all(dt$weekday, "2", "Wen")
+dt$weekday <- str_replace_all(dt$weekday, "3", "Thu")
+dt$weekday <- str_replace_all(dt$weekday, "4", "Fri")
+dt$weekday <- str_replace_all(dt$weekday, "5", "Sat")
+dt$weekday <- str_replace_all(dt$weekday, "6", "Sun")
+
+dt$weekday <- factor(dt$weekday , levels=c("Mon", "Tue", "Wen", "Thu", "Fri", "Sat", "Sun"))
+
+```
+
+**yr**
+```{r}
+
+dt$yr <- sapply(dt$yr, function(x) {
+        if (x == 0) {'2011'}
+        else {'2012'}}) 
+
+
+```
+
+Print dataset head and tail  
+```{r}
+head(dt)
+tail(dt)
+```
+We remove 'holiday' column because 'workingday' column just contains the same informations. 
+For the same reason we also remove 'dteday' column which contents are expressed by 'yr', 'mnth' and 'weekday' columns.
+In the end we remove the index column.
+
+```{r}
+df <- subset(dt, select = -c(instant, dteday, holiday) )
+```
+
+
+# Check missing values
+```{r}
+df[rowSums(is.na(df)) > 0, ]
+    
+```
+As we can see there aren't Null or missing values.
+
+# Descroptive Analysis
+Now we start a explorative analysis of all variable in the dataset.
+
+```{r}
+summary(df)
+```
+From the summary we have some information about variables distributions. 
+We noticed that in 'weathersit' column the most frequent class is 'Good', followed by 'Fair'. We have only 21 'Bad' weather oblservation. There aren't 'Very Bad' oberservations.
+We also noticed that 'casual' variable has the maximum value bigger than its third quartile. Here mean and median aren't equal. It means that distribution is not symmetrical and there are outliers.  
+The others variables don't show problems.
+
+## Variables
+Now we try to understand variables distribution and their relationship with target variable.
+We use different plots and some hypothesis test to verify our assumptions.
+
+For quantitative variables we plots histograms and boxplots for understanding their distribution and searching outliers.
+Then we use scatterplots for understanding their correlation with target variable.
+We test the normality distribution thanks to Shapiro-Wilk normality test.
+
+The histograms numbers of bins are calculated thanks to Sturges formula:
+
+$(numbers\,of\,bins) = 1 + log{_2}{n}$
+
+
+For qualitative variables we plots barcharts for distribution analysis and conditional boxplots for understanding their correlation with target variable.
+
+# Target variable
+
+**cnt**
+
+```{r}
+brx_cnt <- pretty(range(df$cnt),
+              n = nclass.Sturges(df$cnt), min.n = 1)
+
+ggplot(df, aes(cnt)) + geom_histogram(color = "black", fill = 'lightgreen', alpha = 0.8, breaks = brx_cnt) +
+  labs(x = "Rental bikes", y = "Count", title = "Rental bikes distribution") +
+  theme_minimal() + theme(panel.grid.major = element_line(color = "lightgrey"))
+```
+The target variable distribution is similar to a Normal distribution.
+
+# Quantitative variables
+
+**temp**
+
+```{r}
+brx_temp <- pretty(range(df$temp),
+              n = nclass.Sturges(df$temp), min.n = 1)
+# Histogram
+Temp1 <- ggplot(df) +
+  geom_histogram(aes(x=temp), fill = wes_palette("Chevalier1")[1], color="black", breaks = brx_temp) +
+  geom_vline(aes(xintercept=mean(temp)), color="white", linetype="dashed", size=1) +
+  labs(title="",x="temp", y="Count") +
+  theme_classic()
+# BoxPlot
+Temp2 <- ggplot(df, aes(x = "", y=temp)) +
+  geom_boxplot(fill=wes_palette("Chevalier1")[2], color="black") + labs(title = "", x = "", y = "temp") +
+  theme_minimal()
+
+# ECDF
+Temp3 <- ggplot(df, aes(temp)) +
+  stat_ecdf(geom="step") +
+  labs(title="", y = "", x="temp") +
+  theme_classic()
+
+# Scatterplot
+Temp4 <- ggplot(df) +
+  geom_point(aes(x=temp, y=cnt), shape=21, fill=wes_palette("Chevalier1")[4], color="black") +
+  labs(title="", y = "temp", x="Count")
+ggarrange(Temp1, Temp2, Temp3, Temp4,
+          ncol = 2,
+          nrow = 2)
+```
+From histogram and ECDF we assume that 'temp' distribution is not a normal distribution.
+The scatterplot shows a positive linear correlation with target variable.
+We check the hypothesis of normal distribution thanks to Shapiro-Wilk normality test.
+
+
+```{r}
+shapiro.test(df$temp)
+```
+The Shapiro-Wilk normality test shows a very low p-value (5.013e-12). With this p-value we reject null hypothesis. We can't assume that 'temp' variable distribution is normal.
+
+**atemp**
+
+```{r}
+brx_at <- pretty(range(df$atemp),
+              n = nclass.Sturges(df$atemp), min.n = 1)
+# Histogram
+Atemp1 <- ggplot(df) +
+  geom_histogram(aes(x=atemp), fill = wes_palette("Chevalier1")[1], color="black", breaks = brx_at) +
+  geom_vline(aes(xintercept=mean(atemp)), color="white", linetype="dashed", size=1) +
+  labs(title="",x="atemp", y="Count") +
+  theme_classic()
+# BoxPlot
+Atemp2 <- ggplot(df, aes(x = "", y=atemp)) +
+  geom_boxplot(fill=wes_palette("Chevalier1")[2], color="black") + labs(title = "", x = "", y = "atemp") +
+  theme_minimal()
+
+# ECDF
+Atemp3 <- ggplot(df, aes(atemp)) +
+  stat_ecdf(geom="step") +
+  labs(title="", y = "", x="atemp") +
+  theme_classic()
+
+# Scatterplot
+Atemp4 <- ggplot(df) +
+  geom_point(aes(x=atemp, y=cnt), shape=21, fill=wes_palette("Chevalier1")[4], color="black") +
+  labs(title="", y = "atemp", x="Count")
+ggarrange(Atemp1, Atemp2, Atemp3, Atemp4,
+          ncol = 2,
+          nrow = 2)
+```
+From histogram and ECDF we assume that 'atemp' distribution is not a normal distribution.
+The scatterplot shows a positive linear correlation with target variable.
+There aren't outliers.
+We check the hypothesis of normal distribution thanks to Shapiro-Wilk normality test.
+
+
+```{r}
+shapiro.test(df$atemp)
+```
+The Shapiro-Wilk normality test shows a very low p-value (3.744e-10). With this p-value we reject null hypothesis. We can't assume that 'atemp' variable distribution is normal.
+
+
+**hum**
+
+```{r}
+brx_hum <- pretty(range(df$hum),
+              n = nclass.Sturges(df$hum), min.n = 1)
+# Histogram
+Hum1 <- ggplot(df) +
+  geom_histogram(aes(x=hum), fill = wes_palette("Chevalier1")[1], color="black", breaks = brx_hum) +
+  geom_vline(aes(xintercept=mean(hum)), color="white", linetype="dashed", size=1) +
+  labs(title="",x="humidity", y="Count") +
+  theme_classic()
+# BoxPlot
+Hum2 <- ggplot(df, aes(x = "", y=hum)) +
+  geom_boxplot(fill=wes_palette("Chevalier1")[2], color="black") + labs(title = "", x = "", y = "humidity") +
+  theme_minimal()
+
+# ECDF
+Hum3 <- ggplot(df, aes(hum)) +
+  stat_ecdf(geom="step") +
+  labs(title="", y = "", x="humidity") +
+  theme_classic()
+
+# Scatterplot
+Hum4 <- ggplot(df) +
+  geom_point(aes(x=hum, y=cnt), shape=21, fill=wes_palette("Chevalier1")[4], color="black") +
+  labs(title="", y = "Count", x="Humidity")
+ggarrange(Hum1, Hum2, Hum3, Hum4,
+          ncol = 2,
+          nrow = 2)
+```
+From histogram and ECDF we assume that 'atemp' distribution is a normal distribution.
+The scatterplot shows a linear negative correlation with target variable.
+There are 2 outliers beneath the second quartile.
+We check the hypothesis of normal distribution thanks to Shapiro-Wilk normality test.
+
+
+```{r}
+shapiro.test(df$hum)
+```
+The Shapiro-Wilk normality test shows a p-value of 0.002481. With this p-value we reject null hypothesis. We can't assume that 'hum' variable distribution is normal.
+
+
+Now we analyse the outliers
+
+```{r}
+boxplot.stats(df$hum)
+```
+The first value next to the second quartile is equal to 25% of humidity. It's a realistic value. We don't drop it.
+
+```{r}
+ordered_Hum <- df[order(df$hum), ]
+head(ordered_Hum)
+```
+The furthest outlier is equal to 0% of humidity. Following scientific literature this value is impossibile in the earth atmosphere. [link] https://www.wunderground.com/cat6/world-record-low-humidity-116f-036-humidity-iran
+For this reason we drop this row.
+
+```{r}
+df <- df[-c(69), ]
+```
+
+**windspeed**
+
+```{r}
+brx_ws <- pretty(range(df$windspeed),
+              n = nclass.Sturges(df$windspeed), min.n = 1)
+# Histogram
+WS1 <- ggplot(df) +
+  geom_histogram(aes(x=windspeed), fill = wes_palette("Chevalier1")[1], color="black", breaks = brx_ws) +
+  geom_vline(aes(xintercept=mean(windspeed)), color="white", linetype="dashed", size=1) +
+  labs(title="",x="windspeed", y="Count") +
+  theme_classic()
+# BoxPlot
+WS2 <- ggplot(df, aes(x = "", y=windspeed)) +
+  geom_boxplot(fill=wes_palette("Chevalier1")[2], color="black") + labs(title = "", x = "", y = "windspeed") +
+  theme_minimal()
+
+# ECDF
+WS3 <- ggplot(df, aes(windspeed)) +
+  stat_ecdf(geom="step") +
+  labs(title="", y = "", x="windspeed") +
+  theme_classic()
+
+# Scatterplot
+WS4 <- ggplot(df) +
+  geom_point(aes(x=windspeed, y=cnt), shape=21, fill=wes_palette("Chevalier1")[4], color="black") +
+  labs(title="", y = "Count", x="windspeed")
+ggarrange(WS1, WS2, WS3, WS4,
+          ncol = 2,
+          nrow = 2)
+```
+From histogram and ECDF we assume that 'windspeed' distribution isn't a normal distribution.
+The scatterplot shows a linear negative correlation with target variable.
+There are several outliers above the third quartile.
+We check the hypothesis of normal distribution thanks to Shapiro-Wilk normality test.
+
+
+```{r}
+shapiro.test(df$windspeed)
+```
+The Shapiro-Wilk normality test shows very low p-value (7.311e-11). With this p-value we reject null hypothesis. We can't assume that 'windspeed' variable distribution is normal.
+
+The reason why there isn't a normal in distribution is the presence of a positive skewness, as we can see from the histogram.
+
+We check positive skewness thanks to the Coefficient of Skewness.
+
+```{r}
+skewness(df$windspeed)
+```
+The Coefficient of Skewness is near to 1. It means that there is a positive skewness.
+
+Now we analise the outliers
+
+```{r}
+boxplot.stats(df$windspeed)
+```
+```{r}
+ordered_WindS <- df[order(df$windspeed), ]
+tail(ordered_WindS)
+```
+We know that 'windspeed' is a normalized variable. It's calculated dividing each value for the maximum value avaible (67).
+We dont't know the unit measure. For understandind if an outlier is a realistic value we split the problem into two cases:
+if the unit measure is km/h, the maximum value will be equal to 33.5 km/h; on the other side if the unit measure is mph, the maximum value will be equal to 54 km/h. In both cases, there are possibile values. 
+For this reason we don't drop those rows. 
+
+**casual**
+
+```{r}
+brx_cas <- pretty(range(df$casual),
+              n = nclass.Sturges(df$casual), min.n = 1)
+# Histogram
+Cas1 <- ggplot(df) +
+  geom_histogram(aes(x=casual), fill = wes_palette("Chevalier1")[1], color="black", breaks = brx_cas) +
+  geom_vline(aes(xintercept=mean(casual)), color="white", linetype="dashed", size=1) +
+  labs(title="",x="casual", y="Count") +
+  theme_classic()
+# BoxPlot
+Cas2 <- ggplot(df, aes(x = "", y=casual)) +
+  geom_boxplot(fill=wes_palette("Chevalier1")[2], color="black") + labs(title = "", x = "", y = "casual") +
+  theme_minimal()
+
+# ECDF
+Cas3 <- ggplot(df, aes(casual)) +
+  stat_ecdf(geom="step") +
+  labs(title="", y = "", x="casual") +
+  theme_classic()
+
+# Scatterplot
+Cas4 <- ggplot(df) +
+  geom_point(aes(x=casual, y=cnt), shape=21, fill=wes_palette("Chevalier1")[4], color="black") +
+  labs(title="", y = "Count", x="casual")
+ggarrange(Cas1, Cas2, Cas3, Cas4,
+          ncol = 2,
+          nrow = 2)
+```
+From histogram and ECDF we assume that 'windspeed' distribution isn't a normal distribution.
+The scatterplot shows a linear positive correlation with target variable.
+There are several outliers above the third quartile.
+We check the hypothesis of normal distribution thanks to Shapiro-Wilk normality test.
+
+
+```{r}
+shapiro.test(df$casual)
+```
+The Shapiro-Wilk normality test shows very low p-value (2.2e-16). With this p-value we reject null hypothesis. As we said We can't assume that 'windspeed' variable distribution is normal.
+
+The reason why there isn't a normal in distribution is the presence of a positive skewness, as we can see from the histogram.
+
+We check positive skewness thanks to the Coefficient of Skewness.
+
+```{r}
+skewness(df$casual)
+```
+As we noticed there is a high positive skewness.
+
+
+**registered**
+
+```{r}
+brx_reg <- pretty(range(df$registered),
+              n = nclass.Sturges(df$registered), min.n = 1)
+# Histogram
+Reg1 <- ggplot(df) +
+  geom_histogram(aes(x=registered), fill = wes_palette("Chevalier1")[1], color="black", breaks = brx_reg) +
+  geom_vline(aes(xintercept=mean(registered)), color="white", linetype="dashed", size=1) +
+  labs(title="",x="Registered", y="Count") +
+  theme_classic()
+# Box Plot
+Reg2 <- ggplot(df, aes(x = "", y=registered)) +
+  geom_boxplot(fill=wes_palette("Chevalier1")[2], color="black") + labs(title = "", x = "", y = "Registered") +
+  theme_minimal()
+# ECDF
+Reg3 <- ggplot(df, aes(registered)) +
+  stat_ecdf(geom="step") +
+  labs(title="", y = "", x="registered") +
+  theme_classic()
+# Scatterplot
+Reg4 <- ggplot(df) +
+  geom_point(aes(x=registered, y=cnt), shape=21, fill=wes_palette("Chevalier1")[4], color="black") +
+  labs(title="", y = "registered", x="Count")
+ggarrange(Reg1, Reg2, Reg3, Reg4,
+          ncol = 2,
+          nrow = 2)
+```
+From histogram and ECDF we assume that 'registered' distribution is a normal distribution.
+The scatterplot shows a linear positive correlation with target variable.
+There aren't outliers.
+
+We check skewness thanks to the Coefficient of Skewness.
+
+```{r}
+skewness(df$registered)
+```
+The coefficient is near to 0. We can assume that 'registered' variable has a symmetrical distribution.
+
+
+# Qualitative variables
+
+**season**
+
+```{r}
+Season1 <- ggplot(df, aes(season)) + geom_bar(aes(color = season, fill = season), alpha = 0.4) +
+  labs(x = "Season", y = "Frequency", title = "Seasonal Frequency") + theme(legend.position = "none")
+
+
+Season2 <- ggplot(df, aes(season, cnt)) + geom_boxplot(aes(color = season, fill = season), alpha = 0.4) +
+  labs(x = "Season", y = "Rentals bikes", title = "Rentals bikes for season") +
+  theme_minimal() + theme(legend.position = "none", panel.grid.major = element_line(color = "lightgrey"))
+
+ggarrange(Season1, Season2,
+          ncol = 2,
+          nrow = 1)
+```
+There are more rentals bikes in fall than in the other season. On the other side, during the springer there is the lowest number of rentals bikes. 
+There are 2 outliers in springer and winter season.
+
+**yr**
+
+```{r}
+Year1 <- ggplot(df, aes(yr)) + geom_bar(aes(color = yr, fill = yr), alpha = 0.4) +
+  labs(x = "Year", y = "Frequency", title = "Annual Frequency") + theme(legend.position = "none")
+
+
+Year2 <- ggplot(df, aes(yr, cnt)) + geom_boxplot(aes(color = yr, fill = yr), alpha = 0.4) +
+  labs(x = "Year", y = "Rentals bikes", title = "Rentals bikes for year") +
+  theme_minimal() + theme(legend.position = "none", panel.grid.major = element_line(color = "lightgrey"))
+
+ggarrange(Year1, Year2,
+          ncol = 2,
+          nrow = 1)
+```
+The the number of rentals bikes increase over the years. In 2012 there are more or less the double of rentals.
+
+
+**mnth**
+
+```{r}
+Month1 <- ggplot(df, aes(mnth)) + geom_bar(aes(color = mnth, fill = mnth), alpha = 0.4) +
+  labs(x = "Month", y = "Frequency", title = "Month Frequency") + theme(legend.position = "none")
+
+
+Month2 <- ggplot(df, aes(mnth, cnt)) + geom_boxplot(aes(color = mnth, fill = mnth), alpha = 0.4) +
+  labs(x = "Month", y = "Rentals bikes", title = "Rentals bikes for month") +
+  theme_minimal() + theme(legend.position = "none", panel.grid.major = element_line(color = "lightgrey"))
+
+ggarrange(Month1, Month2,
+          ncol = 2,
+          nrow = 1)
+```
+From the contiditional boxplots we assume that the rentals bikes depends on the month. From June to September there are the highest values. The lowest values are in the winter months. 
+
+We check this assumption with an hypothesis test:
+$$ H_0: \mu_i = \mu_k \,\,\, for \, \vee i,k \,\, in \,\{Gen, Feb, .....,Dec\} $$
+$$ H_1: at \,least \,one \,equivalence \,in \,H_0 \,is \,not \,true  $$
+
+
+```{r}
+an <- aov(cnt~as.factor(mnth), data = df)
+summary(an)
+```
+We reject the null hypothesis. So month averages are not the equal to each other. We assume that the target variable is dependent on mean to 'mnth' variable.    
+
+**weekday**
+
+```{r}
+
+WD1 <- ggplot(df, aes(weekday)) + geom_bar(aes(color = weekday, fill = weekday), alpha = 0.4) +
+  labs(x = "Day", y = "Frequency", title = "Daily frequency") + theme(legend.position = "none")
+
+
+WD2 <- ggplot(df, aes(weekday, cnt)) + geom_boxplot(aes(color = weekday, fill = weekday), alpha = 0.4) + 
+  labs(x = "Day", y = "Rentals bikes", title = "Rentals bikes for day") +
+  theme_minimal() + theme(legend.position = "none", panel.grid.major = element_line(color = "lightgrey"))
+
+ggarrange(WD1, WD2,
+          ncol = 2,
+          nrow = 1)
+```
+From the contiditional boxplots we assume that the rentals bikes don' t depend on the day. Indeed the daily means are kind of equal.  
+
+We check this assumption with an hypothesis test:
+$$ H_0: \mu_i = \mu_k \,\,\, for \, \vee i,k \,\, in \,\{Mon, Tue, ..., Sun\} $$
+$$ H_1: at \,least \,one \,equivalence \,in \,H_0 \,is \,not \,true  $$
+
+
+```{r}
+an <- aov(cnt~as.factor(weekday), data = df)
+summary(an)
+```
+With a pvalue of 0.531, we can't reject the null hypothesis. So daily means are equal to each other. We assume that the target variable is independent on mean to 'weekday' variable.
+So we don't use this variable in the linear regression model.
+
+**workingday**
+
+```{r}
+WRD1 <- ggplot(df, aes(workingday)) + geom_bar(aes(color = workingday, fill = workingday), alpha = 0.4) + 
+  labs(x = "Workingday", y = "Frequency", title = "Workingday Frequency") + theme(legend.position = "none")
+
+
+WRD2 <- ggplot(df, aes(workingday, cnt)) + geom_boxplot(aes(color = workingday, fill = workingday), alpha = 0.4) +
+  labs(x = "Workingday", y = "Rentals bikes", title = "Rentals bikes for workingday") +
+  theme_minimal() + theme(legend.position = "none", panel.grid.major = element_line(color = "lightgrey"))
+
+ggarrange(WRD1, WRD2,
+          ncol = 2,
+          nrow = 1)
+```
+From the contiditional boxplots we assume that the rentals bikes don't depend on the workingday variable. Indeed the means of both classes are kind of the same.  
+
+We check this assumption with an hypothesis test:
+$$ H_0: \mu_w = \mu_h  $$
+$$ H_1: The \,equivalence \,in \,H_0 \,is \,not \,true  $$
+
+
+```{r}
+an <- aov(cnt~as.factor(workingday), data = df)
+summary(an)
+```
+Using a confidence of 95%, we can't reject the null hypothesis. So workingday means are equal to each other. We assume that the target variable is independent on mean to 'workingday' variable.
+So we don't use this variable in the linear regression model.
+
+**weathersit**
+
+```{r}
+WS1 <- ggplot(df, aes(weathersit)) + geom_bar(aes(color = weathersit, fill = weathersit), alpha = 0.4) +
+  labs(x = "Weather", y = "Frequency", title = "Weather frequency") + theme(legend.position = "none")
+
+
+WS2 <- ggplot(df, aes(weathersit, cnt)) + geom_boxplot(aes(color = weathersit, fill = weathersit), alpha = 0.4) +
+  labs(x = "Weather", y = "Rentals bikes", title = "Rentals bikes for weather condition") +
+  theme_minimal() + theme(legend.position = "none", panel.grid.major = element_line(color = "lightgrey"))
+
+ggarrange(WS1, WS2,
+          ncol = 2,
+          nrow = 1)
+```
+The number of rentals bikes depend on weather conditions. Indeed it increases with better weather conditions.
+
+We check this assumption with an hypothesis test:
+$$ H_0: \mu_b = \mu_F = \mu_G  $$
+$$ H_1: At \,least \,one \,equivalence \,in \,H_0 \,is \,not \,true  $$
+
+
+```{r}
+an <- aov(cnt~as.factor(weathersit), data = df)
+summary(an)
+```
+With a pvalue of 2e-16 we reject the null hypothesis. The target variable is dependent on means to 'weathersit' variable.
+
+
+# Heatmap
+We check possible high correlation between variables. We use a heatmap.
+
+```{r}
+corrplot(cor(df[, -c(1:6)]),
+         addCoef.col = "lightgrey",
+         tl.col="black", tl.srt=45)
+```
+We can observe a high correlation between 'registered' and 'casual' variable related to the target variable. We'll not use those two variables because  they will not be very useful in the modeling process as these are just number of users and unlikely to be the factor that directly causes rise in the number of bike rentals.
+There also is autocorrelation between 'atemp' and 'temp' variable. We won't use them in the regression model.
+
+# Linear Regression
+
+Now we build a linear regression model with the backward process. We build a first model including all variables, except for 'atemp', 'casual', 'registered', 'weekday' and 'workingday'. 
+Then we'll drop variables that aren't significant and we compare models using Test F.
+
+```{r}
+df1 <- subset(df, select = -c(atemp, casual, registered, weekday, workingday))
+
+View(df1)
+```
+
+# Build the model
+```{r}
+cnt.lm_all <- lm(cnt ~ ., data=df1)
+summary(cnt.lm_all)
+```
+The first model with 20 variables have high level of $R^2$ and  $R^2\, Adjusted$ and its F-statistic is significant, so there is at least one coefficient significantly different from zero.
+We noticed that some coefficients are not significant.
+We drop that variables which have pvalue over 0.30. 
+Then we compare the models.
+
+# Dummy
+Now we exclude the irrelevant dummy levels that we observed before. We build two new variables that aggregate all irrelevant levels in one.
+
+```{r}
+df1$reduced_season <- df1$season
+df1$reduced_season[which(df1$reduced_season == 'summer')] <- 'fall'
+ 
+df1$reduced_mnth <- df1$mnth
+df1$reduced_mnth[which(df1$mnth == 'Feb')] <- 'Gen'
+df1$reduced_mnth[which(df1$mnth == 'Jul')] <- 'Gen'
+df1$reduced_mnth[which(df1$mnth == 'Nov')] <- 'Gen'
+df1$reduced_mnth[which(df1$mnth == 'Dec')] <- 'Gen'
+
+df2 <-  subset(df1, select = -c(season, mnth))
+
+
+# Build a new model
+cnt.lm_1 <- lm(cnt ~ ., data=df2)
+```
+
+Now we compare the two models using a Test F. It works with ANOVA function.
+
+```{r}
+anova(cnt.lm_all, cnt.lm_1, test = 'F')
+```
+The pvalue is not significant. We can't reject the null hypothesis. So we can't say that the second model coefficients are significantly different from zero. We can consider the second model goog as much as the first one.  
+
+```{r}
+summary(cnt.lm_1)
+```
+The model coefficients are all significant. It keeps high value of $R^2$  and $R^2 \,Adjusted$
+
+# Multicollinearity of indipendent variables: VIF
+We evaluate the collinearity between variables using VIF index.
+
+$$VIF_i = 1/(1-R_i^2)$$
+VIF measures how much the variance of an estimated regression coefficient is increased because of collinearity.
+The values higher than 10 represent multicollinearity of indipendent variables
+
+```{r}
+ols_vif_tol(cnt.lm_1)
+```
+'weatherstiGood' and 'weatherstiFair' variables have VIF higher than 10. There is collinearity.
+Now we drop 'weatherstiGood' and build another model. 
+
+```{r}
+df1$reduced_weathersit <- df1$weathersit
+df1$reduced_weathersit[which(df1$reduced_weathersit == 'Good')] <- 'Bad'
+
+df3 <-  subset(df1, select = -c(season, mnth, weathersit))
+
+# Build a new model
+cnt.lm_2 <- lm(cnt ~ ., data=df3)
+summary(cnt.lm_2)
+ols_vif_tol(cnt.lm_2)
+
+```
+In the cnt.lm_2 model there isn't collinearity anymore. 
+Now 'reduced_weatherFair' is not significant. 
+
+Now we compare the two models using a Test F. It works with ANOVA function.
+
+```{r}
+anova(cnt.lm_1, cnt.lm_2, test = 'F')
+```
+The pvalue is significant. We must reject the null hypothesis. So we can't say that the cnt.lm_2 model is good as much as the cnt.lm_1 model. We must keep cnt.lm_1.  
+
+# Residuals analysis
+
+Now we evaluate the cnt.lm_1 model and we check if it satisfies the Classic linear regression models assumptions.
+We don't modify the model.
+
+
+```{r}
+par(mfrow = c(2, 2))
+plot(cnt.lm_2)
+```
+**Residual vs Fitted**
+The residuals distribution shape doesn't suggest the presence of heteroscedasticity. 
+From this plot we can also observe the presence of linearity.
+
+Now we check with the White test the presence of residuals heteroscedasticity.
+
+**White Test**
+```{r}
+white.test<-function(lmod){
+    u2<-lmod$residuals^2
+    y<-lmod$fitted
+    R2u<-summary(lm(u2~y+I(y^2)))$r.squared
+    LM<-length(y)*R2u
+    p.val<-1-pchisq(LM,2)
+    data.frame("Test Statistic"=LM, "P"=p.val)
+}
+
+white.test(cnt.lm_1)
+```
+With a confidence of 95% we reject the null hypothesis. The model has homoskedastic residuals. 
+
+**Q-Q Plot**
+The Q-Q plot is useful to understand the presence of normality in the model shape.
+In our case the residuals are distributed along the red line, so we could assume the presence of normality in distribution.
+There is a heavy left tail that is very different from the other residuals.
+
+Now we use the Shapiro-Wilks normaliry Test to control the presence of normality in residuals distribution.
+The null hypothesis is:
+$$ H_0: i our \,residuals \,are \,normally \,distributed $$ 
+
+
+**Test di Shapiro-Wilks **
+```{r}
+shapiro.test(cnt.lm_1$residuals)
+```
+We reject the null hypothesis. We can't assume that residuals are normally distributed
+
+**Scale-Location**
+
+This plot is useful to verify the homoskedasticity of residuals. Indeed, when the red line is horizontal the null hypothesis is satisfied. We verified this assumption in the chunk above.
+
+**Residuals vs Leverage**
+
+We use this plot to verify the presence of outliers.
+There are many bordeline values. 
+
+As we can see there aren't leverage points.
+A leverage point is a value in [0,1] range.
+In this case the most part of residuals are in [-3,3] range.
+
+There are many values that could be problematic. For example we see that the 668 and 669 obervations can be considered as outliers. So we could try to drop them and fit another model.
+The elimination of outliers could change residuals distribution to a normal one.
+
+It will be useful make a obervations analysis of outliers. 
+
+
+**Autocorrelazione dei residui: Durbin-Watson**
+
+Now we use the Durbin-Watson test to check if the residuals are correlated each other.
+This index is in a [0,4] range.
+Typically if a value is near 2, there isn't correlation.
+On the otherside a value near to 0 means that there is a positive correlation between residuals.
+
+```{r}
+durbinWatsonTest(cnt.lm_1)
+```
+In this case there is a positive correlation between residuals.
+A possibile reason of this result is that the dataset is composed by  time aggregated values.
+This kind of data need specific correction or use specific models based on temporal analysis. 
+
+# Conclusion
+
+This is the end of our analysis. We explored the dataset and all its variables.
+We build a model for forecasting the rentals bikes and we discovered that 'weekday', 'workingday' and 'atemp' variables are irrelevant. 
+The model has a great measure of $R^2$. Unfortunately it doesn't satisfy the assumptions of residuals normality and autocorrelation. More analysis are required.
+
+We could build another model using based on temporal analysis and compare it to linear regression model to verify the useless of  some variables.   
+
+In the end, it could be a great opportunity analyse outliers and strange values together with a domain expert.
