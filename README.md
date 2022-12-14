@@ -32,9 +32,6 @@ Her you can find the <a href="https://github.com/TStrada/Foundation-of-Probailit
 <br>
 
 <p align = "center">
+<a href = "https://linkedin.com/in/TommasoStrada"><img src="https://github.com/TStrada/TStrada/blob/main/LinkedIn_logo.png" width = "2.3%"></a>
   <a href = "https://github.com/TStrada"><img src="https://github.com/TStrada/TStrada/blob/main/GitHub_image.png" width = "2.5%"></a>
-</p>
-
-<p align = "center">
-<!--   <a href = "https linkedin"><img src="link sub directory image linkedin " width = "2.3%"></a> -->
 </p>
