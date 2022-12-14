@@ -13,13 +13,13 @@
 <a name="overview"></a>
 ## &#9741; &nbsp; Overview
 The aim of this project is to analyze ad predict the number of bike rentals by USA users.
-You can find the dataset <a href="https://archive.ics.uci.edu/ml/datasets/bike+sharing+dataset">here .
+You can find the dataset <a href="https://archive.ics.uci.edu/ml/datasets/bike+sharing+dataset"> here.<br>
 First there is a complete descriptive analysis (EDA) thanks to statistical measures and tests, executed by R tools. 
 Moreover there is a linear regression model building and its assumptions validation.
 
 <a name="Report&Code"></a>
 ## &#9741; &nbsp; Report&Code 
-Her you can find the <a href="">Report and the <a href="">R script
+Her you can find the <a href=""> Report<br> and the <a href=""> R<br> script
 
 
 <a name="Personal informations"></a>
