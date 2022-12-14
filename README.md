@@ -1,7 +1,7 @@
 # Foundation-of-Probaility-and-Statistic-FPS-
 
 <p align="center">
-  <img src="" width="60%">
+  <img src="https://github.com/TStrada/Foundation-of-Probaility-and-Statistic-FPS-/blob/main/BikeRental.jpg" width="60%">
 </p>
   <h6 align="center">a FPS Project</h6>
 <p align="center">
@@ -13,13 +13,13 @@
 <a name="overview"></a>
 ## &#9741; &nbsp; Overview
 The aim of this project is to analyze ad predict the number of bike rentals by USA users.
-You can find the dataset <a href="https://archive.ics.uci.edu/ml/datasets/bike+sharing+dataset"> here.<br>
+You can find the dataset <a href="https://archive.ics.uci.edu/ml/datasets/bike+sharing+dataset"> here.</a> <br>
 First there is a complete descriptive analysis (EDA) thanks to statistical measures and tests, executed by R tools. 
 Moreover there is a linear regression model building and its assumptions validation.
 
 <a name="Report&Code"></a>
 ## &#9741; &nbsp; Report&Code 
-Her you can find the <a href=""> Report<br> and the <a href=""> R<br> script
+Her you can find the <a href="https://github.com/TStrada/Foundation-of-Probaility-and-Statistic-FPS-/blob/main/FOP-Project-T.Strada.pdf"> Report</a> and the <a href="https://github.com/TStrada/Foundation-of-Probaility-and-Statistic-FPS-/blob/main/FOP-Project-T.Strada.Rmd"> R</a> script
 
 
 <a name="Personal informations"></a>
